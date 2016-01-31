@@ -26,8 +26,11 @@ metadata {
         attribute "destURL", "string"
         attribute "currentWindowID", "string" //the current window ID from Window.GetProperties 
         attribute "playerID", "number" //the current active player ID
+        attribute "kodiVersion", "string" //kodi app version
+        attribute "kodiName", "string" //kodi name
         
         command "splitURL", [ "string" ]
+        command "toggleMute"
         
         command "inputUp"
         command "inputDown"
@@ -46,70 +49,119 @@ metadata {
 		// TODO: define status and reply messages here
 	}
 
-	tiles {
-		// TODO: define your main and details tiles here
-        valueTile("destURL", "device.destURL", decoration: "flat", width: 3){ 
-        	state "destURL", label: '${currentValue}'
-        }
-        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat") {
-            state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
-        }
-        standardTile("urlsplitter", "device.destURL", inactiveLabel: false, decoration: "flat") {
-            state "default", action:"splitURL", icon:"st.Office.office12", label: "Parse URL"
-        }
-        standardTile("videoStatus", "device.status", inactiveLabel: false, decoration: "flat") {
-            state "default", action:"getVideoStatus", label: "Get Video Status"
+	tiles(scale: 2) {
+    	//Row 1 - Mult Attribute Tile
+        multiAttributeTile(name:"kodiMulti", type:"generic", width:6, height:4) {
+          tileAttribute("device.status", key: "PRIMARY_CONTROL") {
+          	attributeState("default", label: '--', backgroundColor:"#79b821")
+            attributeState("paused", label:'Paused', icon: "st.sonos.pause-btn", backgroundColor:"#79b821")
+            attributeState("playing", label:'Playing', icon: "st.sonos.play-btn", backgroundColor:"#79b821")
+            attributeState("stopped", label:'Stopped', icon: "st.sonos.stop-btn", backgroundColor:"#79b821")
+          }
+          /*
+          tileAttribute("device.trackDescription", key: "SECONDARY_CONTROL") {
+            attributeState("default", label:'${currentValue}', unit:"")
+          }
+          */
         }
         
-        //inputs
-        valueTile("input.up", "device.input", inactiveLabel: false, decoration: "flat") {
-            state "default", action:"inputUp", label: "Γåæ"
+        //Row 2 - Thin
+        valueTile("track", "device.trackDescription", decoration: "flat", width: 6, height: 2){ 
+        	state "default", label: 'Now Playing: ${currentValue}'
         }
-        valueTile("input.down", "device.input", inactiveLabel: false, decoration: "flat") {
-            state "default", action:"inputDown", label: "Γåô"
+        valueTile("activity", "device.currentActivity", decoration: "flat", width: 3){ 
+        	state "default", label: '${currentValue}'
         }
-        valueTile("input.left", "device.input", inactiveLabel: false, decoration: "flat") {
-            state "default", action:"inputLeft", label: "ΓåÉ"
-        }
-        valueTile("input.right", "device.input", inactiveLabel: false, decoration: "flat") {
-            state "default", action:"inputRight", label: "ΓåÆ"
-        }
-        valueTile("input.select", "device.input", inactiveLabel: false, decoration: "flat") {
-            state "default", action:"inputSelect", label: "Select"
-        }
-        valueTile("input.info", "device.input", inactiveLabel: false, decoration: "flat") {
-            state "default", action:"inputInfo", label: "  Info  "
-        }
-        valueTile("input.back", "device.input", inactiveLabel: false, decoration: "flat") {
-            state "default", action:"inputBack", label: "  Back  "
-        }
-        standardTile("input.home", "device.input", inactiveLabel: false, decoration: "flat") {
+
+        
+        //----------------inputs-------------------
+        //Row 3
+        standardTile("input.home", "device.currentActivity", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
             state "default", action:"inputHome", label: "Home", icon: "st.Home.home2"
         }
+        valueTile("input.up", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
+            state "default", action:"inputUp", label: 'Γåæ'
+        }
+        valueTile("input.info", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
+            state "default", action:"inputInfo", label: "  INFO  "
+        }
+        //Row 4
+        valueTile("input.left", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
+            state "default", action:"inputLeft", label: "ΓåÉ"
+        }
+        valueTile("input.select", "device.currentActivity",  decoration: "flat", height: 2, width: 2) {
+            state "default", action:"inputSelect", label: "SELECT"
+        }
+        valueTile("input.right", "device.currentActivity",  decoration: "flat", height: 2, width: 2) {
+            state "default", action:"inputRight", label: "ΓåÆ"
+        }
+        //Row 5
+        valueTile("input.back", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
+            state "default", action:"inputBack", label: "  BACK  "
+        }
+        valueTile("input.down", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
+            state "default", action:"inputDown", label: "Γåô"
+        }
+        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
+            state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
+        }
         
-        //playback controls
-        valueTile("input.playpause", "device.input", inactiveLabel: false, decoration: "flat") {
-            state "default", action:"pause", label: "Γû╢/Γ¥ÜΓ¥Ü"
+        
+        //----------------playback controls-----------------------
+        //Row 1 (6)
+        standardTile("input.previous", "device.status", decoration: "flat", height: 2, width: 2) {
+            state "default", action:"previousTrack", icon:"st.sonos.previous-btn" //, label: "ΓùÇΓùÇ"
         }
-        valueTile("input.next", "device.input", inactiveLabel: false, decoration: "flat") {
-            state "default", action:"nextTrack", label: "Γû╢Γû╢"
+        standardTile("input.playpause", "device.status", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
+            state "paused", action:"play",icon: "st.sonos.play-btn", nextState:"playing"//, label: "Play" 
+            state "playing", action:"pause",icon: "st.sonos.pause-btn", nextState:"paused"//, label: "Pause" //the second character is pause Γ¥ÜΓ¥Ü Γû╢/ΓÅ╕
+            
         }
-        valueTile("input.previous", "device.input", inactiveLabel: false, decoration: "flat") {
-            state "default", action:"previousTrack", label: "ΓùÇΓùÇ"
+        standardTile("input.next", "device.status", decoration: "flat", height: 2, width: 2) {
+            state "default", action:"nextTrack", icon:"st.sonos.next-btn" //, label: "Γû╢Γû╢"
         }
         
-        standardTile("mainOverview", "device.status", inactiveLabel: false, decoration: "flat") {
+        //--------------Volume Control---------------------
+        //Row 1 (7)
+        controlTile("volume", "device.level", "slider", decoration: "flat", width:4){
+        	state "level", action: "switch level.setLevel"
+        }
+        standardTile("mute", "device.mute", decoration: "flat", height: 2, width: 2){ 
+        	state "default", label: '${currentValue}', action: "toggleMute"
+            state "muted", label: "Unmute", icon: "st.custom.sonos.unmuted", action: "unmute", nextState:"unmuted"
+            state "unmuted", label: "Mute", icon: "st.custom.sonos.muted", action: "mute", nextState:"muted"
+        }
+        //Row 2 (8) - extra data
+        valueTile("destURL", "device.destURL", decoration: "flat", width: 4){ 
+        	state "default", label: '${currentValue}'
+        }
+        
+        //--------------TESTING -------------------
+        //supporting function tiles -- most will be removed when this is released to production
+        standardTile("urlsplitter", "device.destURL", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
+            state "default", action:"splitURL", icon:"st.Office.office12", label: "Parse URL"
+        }
+        standardTile("videoStatus", "device.status", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
+            state "default", action:"getVideoStatus", label: "Get Video Status"
+        }
+
+        
+        //For the lists...
+        standardTile("mainOverview", "device.status", decoration: "flat", height: 2, width: 2) {
             state "default", action:"refresh", icon: "st.Electronics.electronics18"
         }
         
         main(["mainOverview"])
         details([
-        	"destURL", 
+        	//"kodiMulti",
+        	"track",// "activity",
         	"input.home", "input.up", "input.info",
             "input.left", "input.select", "input.right",
             "input.back", "input.down", "refresh",
             "input.previous", "input.playpause", "input.next",
-            "urlsplitter", "videoStatus"
+            "volume", "mute",
+            "destURL"
+            //"urlsplitter", "videoStatus"
             ])
 	}
 }
@@ -156,23 +208,31 @@ def parse(String description) {
             response?.result?.each {
             	//and if we got a player, let's get the actual status
                 def playerid = it.playerid
+                log.debug "Player ID: ${playerid}"
+                sendEvent(name: "playerID", value: playerid)
                 
                 //for audio
                 if(it.type && it.type == "audio"){
                 	//{"jsonrpc": "2.0", "method": "Player.GetItem", "params": { "properties": ["title", "album", "artist", "duration", "thumbnail", "file", "fanart", "streamdetails"], "playerid": 0 }, "id": "AudioGetItem"}
                     log.trace "Audio Player Active"
+                    todo << { getApplicationProperties() } //replace with call to get audio status
                 }
                 //for video
                 if(it.type && it.type == "video"){
                 	log.trace "Video Player Active"
-                    todo <<  { getVideoPlayerStatus(playerid) }
+                    todo <<  { getVideoPlayerStatus(playerid) } //Player.GetItem
                 }
-
-				//if we didn't get a parseable result, let's clear out the last command tracked
-                if(!it.type){ 
-                	log.trace "NO PLAYERS Active"
-                }
-                sendResult(name: "playerID", value: playerid)
+            }
+            
+            if(!response?.result){
+                log.trace "NO PLAYERS Active"
+                //clear out the track data if no players are active
+                sendEvent(name: "trackDescription", value: "")
+                sendEvent(name: "trackData", value: "")
+                sendEvent(name: "status", value: "Inactive")
+                //if we don't have anything playing, let's get the application properties 
+                // (since it's normally triggered after parsing the current player data)
+                todo << { getApplicationProperties() }
             }
         }
         
@@ -183,6 +243,9 @@ def parse(String description) {
         	log.trace "Now Playing: ${response?.result?.item?.label}"
             sendEvent(name: "trackDescription", value: response?.result?.item?.label)
             sendEvent(name: "trackData", value: response?.result?.item)
+            
+            //when we are done parsing the Player.GetItem for video, let's get the other application properties
+            todo << { getApplicationProperties() }
         }
         //if(response.result) log.debug "Result: ${response.result}"
         
@@ -217,7 +280,7 @@ def parse(String description) {
         //Application.SetMute
         if(state.lastCommand == "Application.SetMute"){
         	state.lastCommand = null
-            def muteStatus = "unmute"
+            def muteStatus = "unmuted"
             if(response?.result){ muteStatus = "muted"}else{ muteStatus = "unmuted"}
             log.trace "Mute Status is: ${muteStatus}"
             sendEvent(name: "mute", value: muteStatus)
@@ -232,6 +295,50 @@ def parse(String description) {
         
         
         //TODO: Also GET the VOLUME and MUTE status
+        if(state.lastCommand == "Application.GetProperties"){
+        	//volume
+            sendEvent(name: "level", value: response?.result?.volume)
+            //muted
+            def muteStatus = "unmuted"
+            if( response?.result?.muted){ muteStatus = "muted"}else{ muteStatus = "unmuted"}
+            sendEvent(name: "mute", value: muteStatus)
+            //name
+            sendEvent(name: "kodiName", value: response?.result?.name)
+            //version
+            sendEvent(name: "kodiVersion", value: response?.result?.version?.revision)
+            
+            //when we are done getting the volume level, let's refresh the current activity (current window)
+            todo << { getCurrentActivity() }
+        }
+        
+        //TODO: Get the Player Properties
+        //Player.GetProperties params [ properties [
+        /*
+        [ boolean canrotate = False ]
+        [ boolean canrepeat = False ]
+        [ integer speed = 0 ]
+        [ boolean canshuffle = False ]
+        [ boolean shuffled = False ]
+        [ boolean canmove = False ]
+        [ boolean subtitleenabled = False ]
+        [ Player.Position.Percentage percentage = 0 ]
+        [ Player.Type type = "video" ]
+        [ Player.Repeat repeat = "off" ]
+        [ boolean canseek = False ]
+        [ Player.Subtitle currentsubtitle ]
+        [ Player.Subtitle[] subtitles ]
+        [ Global.Time totaltime ]
+        [ boolean canzoom = False ]
+        [ Player.Audio.Stream.Extended currentaudiostream ]
+        [ Playlist.Id playlistid = -1 ]
+        [ Player.Audio.Stream.Extended[] audiostreams ]
+        [ boolean partymode = False ]
+        [ Global.Time time ]
+        [ Playlist.Position position = -1 ]
+        [ boolean canchangespeed = False ]
+        */
+        
+        
     }
     
     log.debug "running todos"
@@ -344,6 +451,11 @@ def unmute() {
     sendCommand("Application.SetMute", ["mute": false ])
 }
 
+def toggleMute(){
+	log.debug "Executing 'unmute'"
+    sendCommand("Application.SetMute", ["mute": "toggle" ])
+}
+
 def setTrack() {
 	log.debug "Executing 'setTrack'"
 	// TODO: handle 'setTrack' command
@@ -382,10 +494,17 @@ def inputShowOSD(){ sendCommand("Input.ShowOSD") }
 //------------- Player Status ------
 def getActivePlayers(){ sendCommand("Player.GetActivePlayers") }
 def getVideoPlayerStatus(playerID){
+	playerID = playerID ?: 1
+	log.debug "Getting status for player id: ${playerID}"
 	def params = [ "properties": [ "title", "season", "episode", "duration", "showtitle", "tvshowid", "thumbnail", "streamdetails" ],
                   "playerid": playerID ?: 1
                  ]
     sendCommand("Player.GetItem", params, "VideoGetItem")
+}
+
+def getApplicationProperties(){
+	//{"jsonrpc": "2.0", "method": "Application.GetProperties", "params": {"properties": ["volume"]}, "id": 1}
+    sendCommand("Application.GetProperties", ["properties": [ "volume", "muted", "name", "version" ] ])
 }
 
 
