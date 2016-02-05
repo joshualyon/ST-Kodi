@@ -29,6 +29,7 @@ metadata {
         attribute "kodiVersion", "string" //kodi app version
         attribute "kodiName", "string" //kodi name
         
+        //command "setupDevice", ["string", "string", "string", "number"]
         command "splitURL", [ "string" ]
         command "toggleMute"
         
@@ -80,27 +81,27 @@ metadata {
             state "default", action:"inputHome", label: "Home", icon: "st.Home.home2"
         }
         valueTile("input.up", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
-            state "default", action:"inputUp", label: 'Γåæ'
+            state "default", action:"inputUp", label: '↑'
         }
         valueTile("input.info", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
             state "default", action:"inputInfo", label: "  INFO  "
         }
         //Row 4
         valueTile("input.left", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
-            state "default", action:"inputLeft", label: "ΓåÉ"
+            state "default", action:"inputLeft", label: "←"
         }
         valueTile("input.select", "device.currentActivity",  decoration: "flat", height: 2, width: 2) {
             state "default", action:"inputSelect", label: "SELECT"
         }
         valueTile("input.right", "device.currentActivity",  decoration: "flat", height: 2, width: 2) {
-            state "default", action:"inputRight", label: "ΓåÆ"
+            state "default", action:"inputRight", label: "→"
         }
         //Row 5
         valueTile("input.back", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
             state "default", action:"inputBack", label: "  BACK  "
         }
         valueTile("input.down", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
-            state "default", action:"inputDown", label: "Γåô"
+            state "default", action:"inputDown", label: "↓"
         }
         standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
             state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
@@ -110,15 +111,15 @@ metadata {
         //----------------playback controls-----------------------
         //Row 1 (6)
         standardTile("input.previous", "device.status", decoration: "flat", height: 2, width: 2) {
-            state "default", action:"previousTrack", icon:"st.sonos.previous-btn" //, label: "ΓùÇΓùÇ"
+            state "default", action:"previousTrack", icon:"st.sonos.previous-btn" //, label: "◀◀"
         }
         standardTile("input.playpause", "device.status", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
             state "paused", action:"play",icon: "st.sonos.play-btn", nextState:"playing"//, label: "Play" 
-            state "playing", action:"pause",icon: "st.sonos.pause-btn", nextState:"paused"//, label: "Pause" //the second character is pause Γ¥ÜΓ¥Ü Γû╢/ΓÅ╕
+            state "playing", action:"pause",icon: "st.sonos.pause-btn", nextState:"paused"//, label: "Pause" //the second character is pause ❚❚ ▶/⏸
             
         }
         standardTile("input.next", "device.status", decoration: "flat", height: 2, width: 2) {
-            state "default", action:"nextTrack", icon:"st.sonos.next-btn" //, label: "Γû╢Γû╢"
+            state "default", action:"nextTrack", icon:"st.sonos.next-btn" //, label: "▶▶"
         }
         
         //--------------Volume Control---------------------
@@ -167,10 +168,14 @@ metadata {
 }
 
 preferences{
-	input("overrideURL", "text", title: "Kodi URL", description: "Full URL to Kodi Webserver, including port")
-    //input("destPort", "text", title: "Port Number", description: "Kodi Web Server Port Number", defaultValue:80)
+	section("IMPORTANT: Only use the override if instructed to do so!"){
+    	paragraph "Your Kodi devices should be automatically discovered using the Kodi SmartApp. Overriding the URL here may cause unexpected results. ONLY USE THE OVERRIDE IF YOU KNOW WHAT YOU ARE DOING"
+		input("overrideURL", "text", title: "Override URL", description: "Full URL to Kodi Webserver, including port")
+    }
 }
 
+
+//---------------- Setup Methods ----------------
 def installed(){
 	//refresh()
     log.debug "installed"
@@ -186,172 +191,14 @@ def initialize(){
     setURL(overrideURL)
 }
 
-// parse events into attributes
-def parse(String description) {
-	//log.debug "Parsing '${description}'"
-    def todo = []
-    def map = stringToMap(description)
-    if(map.headers && map.body){
-    	log.trace "Response Received (with Headers and Body)"
-    	
-        def bodyString = new String(map.body.decodeBase64())
-        def slurper = new JsonSlurper()
-        def response = slurper.parseText(bodyString)
-        
-        log.debug response
-        log.debug "Last Command: ${state.lastCommand}"
-        
-        //if we were requesting the current active players
-        if(state.lastCommand == "Player.GetActivePlayers"){
-        	state.lastCommand = null
-        	//then parse the list of active players
-            response?.result?.each {
-            	//and if we got a player, let's get the actual status
-                def playerid = it.playerid
-                log.debug "Player ID: ${playerid}"
-                sendEvent(name: "playerID", value: playerid)
-                
-                //for audio
-                if(it.type && it.type == "audio"){
-                	//{"jsonrpc": "2.0", "method": "Player.GetItem", "params": { "properties": ["title", "album", "artist", "duration", "thumbnail", "file", "fanart", "streamdetails"], "playerid": 0 }, "id": "AudioGetItem"}
-                    log.trace "Audio Player Active"
-                    todo << { getApplicationProperties() } //replace with call to get audio status
-                }
-                //for video
-                if(it.type && it.type == "video"){
-                	log.trace "Video Player Active"
-                    todo <<  { getVideoPlayerStatus(playerid) } //Player.GetItem
-                }
-            }
-            
-            if(!response?.result){
-                log.trace "NO PLAYERS Active"
-                //clear out the track data if no players are active
-                sendEvent(name: "trackDescription", value: "")
-                sendEvent(name: "trackData", value: "")
-                sendEvent(name: "status", value: "Inactive")
-                //if we don't have anything playing, let's get the application properties 
-                // (since it's normally triggered after parsing the current player data)
-                todo << { getApplicationProperties() }
-            }
-        }
-        
-        //respond to getting the details for the current audio/video player
-        if(state.lastCommand == "Player.GetItem"){
-        	//item { id, title, thumbnail, label, streamdetails, type(movie|tvshow), tvshowid, episode, season, showtitle }
-        	state.lastCommand = null
-        	log.trace "Now Playing: ${response?.result?.item?.label}"
-            sendEvent(name: "trackDescription", value: response?.result?.item?.label)
-            sendEvent(name: "trackData", value: response?.result?.item)
-            
-            //when we are done parsing the Player.GetItem for video, let's get the other application properties
-            todo << { getApplicationProperties() }
-        }
-        //if(response.result) log.debug "Result: ${response.result}"
-        
-        //handle the response for GUI.GetProperties
-        if(state.lastCommand == "GUI.GetProperties"){
-        	state.lastCommand = null
-            //returns currentwindow { label, id } in response.result
-        	log.trace "Received GUI Properties"
-            log.trace "Current Window: ${response?.result?.currentwindow?.label}"
-            sendEvent(name: "currentActivity", value: response?.result?.currentwindow?.label);
-            sendEvent(name: "currentWindowID", value: response?.result?.currentwindow?.id);
-        }
-        
-        //handle the play/pause command
-        if(state.lastCommand == "Player.PlayPause"){
-        	state.lastCommand = null
-        	log.trace "speed: ${response?.result?.speed}"
-            def status = response?.result?.speed > 0 ? "Playing" : "Paused"
-            log.trace "Player Status is: ${status}"
-            sendEvent(name: "status", value: status)
-        }
-        
-        //handle the stop command
-        if(state.lastCommand == "Player.Stop"){
-        	state.lastCommand = null
-            if(response?.result == "OK"){
-            	log.trace "Player Status is: Stopped"
-            	sendEvent(name: "status", value: "Stopped")	
-            }
-        }    
-        
-        //Application.SetMute
-        if(state.lastCommand == "Application.SetMute"){
-        	state.lastCommand = null
-            def muteStatus = "unmuted"
-            if(response?.result){ muteStatus = "muted"}else{ muteStatus = "unmuted"}
-            log.trace "Mute Status is: ${muteStatus}"
-            sendEvent(name: "mute", value: muteStatus)
-        }
-        //Application.SetVolume
-        if(state.lastCommand == "Application.SetVolume"){
-        	state.lastCommand = null
-            def level = response?.result
-            log.trace "Volume Level is: ${level}"
-            sendEvent(name: "level", value: level)
-        }
-        
-        
-        //TODO: Also GET the VOLUME and MUTE status
-        if(state.lastCommand == "Application.GetProperties"){
-        	//volume
-            sendEvent(name: "level", value: response?.result?.volume)
-            //muted
-            def muteStatus = "unmuted"
-            if( response?.result?.muted){ muteStatus = "muted"}else{ muteStatus = "unmuted"}
-            sendEvent(name: "mute", value: muteStatus)
-            //name
-            sendEvent(name: "kodiName", value: response?.result?.name)
-            //version
-            sendEvent(name: "kodiVersion", value: response?.result?.version?.revision)
-            
-            //when we are done getting the volume level, let's refresh the current activity (current window)
-            todo << { getCurrentActivity() }
-        }
-        
-        //TODO: Get the Player Properties
-        //Player.GetProperties params [ properties [
-        /*
-        [ boolean canrotate = False ]
-        [ boolean canrepeat = False ]
-        [ integer speed = 0 ]
-        [ boolean canshuffle = False ]
-        [ boolean shuffled = False ]
-        [ boolean canmove = False ]
-        [ boolean subtitleenabled = False ]
-        [ Player.Position.Percentage percentage = 0 ]
-        [ Player.Type type = "video" ]
-        [ Player.Repeat repeat = "off" ]
-        [ boolean canseek = False ]
-        [ Player.Subtitle currentsubtitle ]
-        [ Player.Subtitle[] subtitles ]
-        [ Global.Time totaltime ]
-        [ boolean canzoom = False ]
-        [ Player.Audio.Stream.Extended currentaudiostream ]
-        [ Playlist.Id playlistid = -1 ]
-        [ Player.Audio.Stream.Extended[] audiostreams ]
-        [ boolean partymode = False ]
-        [ Global.Time time ]
-        [ Playlist.Position position = -1 ]
-        [ boolean canchangespeed = False ]
-        */
-        
-        
-    }
+def setupDevice(url, udn, udnAddress, udnPort){
+    state.udn = udn
+    log.debug "Received: $udnAddress : $udnPort"
+    state.udnAddress = udnAddress
+    state.udnPort = udnPort
+    log.trace "Setup device with address ${udnAddress}:${udnPort} and UDN: ${udn}"
     
-    log.debug "running todos"
-    def toReturn = []
-    todo.each{ toReturn << it.call() }
-    return toReturn
-	// TODO: handle 'activities' attribute
-    
-	// TODO: handle 'status' attribute
-	// TODO: handle 'level' attribute
-
-	// TODO: handle 'mute' attribute
-
+    setURL(url)
 }
 
 def setURL(url){
@@ -362,6 +209,210 @@ def setURL(url){
 
 def getURL(){
 	state.destURL
+}
+
+//-------------- parse events into attributes ----------------
+def parse(String description) {
+	//log.debug "Parsing '${description}'"
+    def todo = []
+    def map = stringToMap(description)
+    def msg = parseLanMessage(description)
+    if(msg.headers && msg.body){
+    //if(map.headers && map.body){
+    	log.trace "Response Received (with Headers and Body)"
+        
+        //log.debug "HDR: ${map.headers.decodeBase64()}"
+        log.debug "HEADER: ${msg.headers}"
+        def server = msg?.headers?.server
+        //nts:upnp:propchange
+        //sid:xxxx-xxxxx <-- Subscriber ID?
+        //TIMEOUT
+        if(msg?.headers?.nt && msg?.headers?.nt.toLowerCase().contains("upnp:event")){ //server?.contains("UPnP") && server.contains("DLNA")
+        	//UPnP Event Subscription Response
+            log.trace "UPnP Response"
+            //log.debug "Body: ${msg.body}"
+            //log.debug "XML: ${msg.xml}"
+            
+            //<e:propertyset xmlns:e="urn:schemas-upnp-org:event-1-0"><e:property><LastChange>&lt;Event xmlns="urn:schemas-upnp-org:metadata-1-0/AVT/"&gt;&lt;InstanceID val="0"&gt;&lt;TransportState val="PAUSED_PLAYBACK"/&gt;&lt;/InstanceID&gt;&lt;/Event&gt;</LastChange></e:property></e:propertyset>
+            //as long as we have the LastChange item, let's take its HTML encoded contents and parse them as XML
+            if(!msg.xml?.property?.LastChange.isEmpty()){
+            	//<Event xmlns="urn:schemas-upnp-org:metadata-1-0/AVT/"><InstanceID val="0"><TransportState val="PAUSED_PLAYBACK"/></InstanceID></Event>
+                //Parse the inner content of the last change (which was HTML encoded)
+                def event = new XmlSlurper().parseText(msg.xml?.property?.LastChange.toString())
+                //And if we got the TransportState, let's update the event status
+                if(!event.InstanceID.TransportState.isEmpty()){
+                	def transportState = event.InstanceID.TransportState.@val
+                    def transportStates = [PAUSED_PLAYBACK: "Paused", PLAYING: "Playing", STOPPED: "Stopped"]
+                    def status = transportStates."$transportState"
+                    log.debug "Current state is: ${status}"
+                    sendEvent(name:"status", value: status)
+                }
+            }
+            //TODO: Check for first playback as a large amount of data gets sent over: CurrentTrackMetaData
+        }
+        else{
+            def bodyString = new String(map.body.decodeBase64())
+
+            //log.debug "BODY: $bodyString"
+            //log.debug "BODY: $msg.data"
+
+            def slurper = new JsonSlurper()
+            def response = slurper.parseText(bodyString)
+
+            log.debug response
+            log.debug "Last Command: ${state.lastCommand}"
+
+            //if we were requesting the current active players
+            if(state.lastCommand == "Player.GetActivePlayers"){
+                state.lastCommand = null
+                //then parse the list of active players
+                response?.result?.each {
+                    //and if we got a player, let's get the actual status
+                    def playerid = it.playerid
+                    log.debug "Player ID: ${playerid}"
+                    sendEvent(name: "playerID", value: playerid)
+
+                    //for audio
+                    if(it.type && it.type == "audio"){
+                        //{"jsonrpc": "2.0", "method": "Player.GetItem", "params": { "properties": ["title", "album", "artist", "duration", "thumbnail", "file", "fanart", "streamdetails"], "playerid": 0 }, "id": "AudioGetItem"}
+                        log.trace "Audio Player Active"
+                        todo << { getApplicationProperties() } //replace with call to get audio status
+                    }
+                    //for video
+                    if(it.type && it.type == "video"){
+                        log.trace "Video Player Active"
+                        todo <<  { getVideoPlayerStatus(playerid) } //Player.GetItem
+                    }
+                }
+
+                if(!response?.result){
+                    log.trace "NO PLAYERS Active"
+                    //clear out the track data if no players are active
+                    sendEvent(name: "trackDescription", value: "")
+                    sendEvent(name: "trackData", value: "")
+                    sendEvent(name: "status", value: "Inactive")
+                    //if we don't have anything playing, let's get the application properties 
+                    // (since it's normally triggered after parsing the current player data)
+                    todo << { getApplicationProperties() }
+                }
+            }
+
+            //respond to getting the details for the current audio/video player
+            if(state.lastCommand == "Player.GetItem"){
+                //item { id, title, thumbnail, label, streamdetails, type(movie|tvshow), tvshowid, episode, season, showtitle }
+                state.lastCommand = null
+                log.trace "Now Playing: ${response?.result?.item?.label}"
+                sendEvent(name: "trackDescription", value: response?.result?.item?.label)
+                sendEvent(name: "trackData", value: response?.result?.item)
+
+                //when we are done parsing the Player.GetItem for video, let's get the other application properties
+                todo << { getApplicationProperties() }
+            }
+            //if(response.result) log.debug "Result: ${response.result}"
+
+            //handle the response for GUI.GetProperties
+            if(state.lastCommand == "GUI.GetProperties"){
+                state.lastCommand = null
+                //returns currentwindow { label, id } in response.result
+                log.trace "Received GUI Properties"
+                log.trace "Current Window: ${response?.result?.currentwindow?.label}"
+                sendEvent(name: "currentActivity", value: response?.result?.currentwindow?.label);
+                sendEvent(name: "currentWindowID", value: response?.result?.currentwindow?.id);
+            }
+
+            //handle the play/pause command
+            if(state.lastCommand == "Player.PlayPause"){
+                state.lastCommand = null
+                log.trace "speed: ${response?.result?.speed}"
+                def status = response?.result?.speed > 0 ? "Playing" : "Paused"
+                log.trace "Player Status is: ${status}"
+                sendEvent(name: "status", value: status)
+            }
+
+            //handle the stop command
+            if(state.lastCommand == "Player.Stop"){
+                state.lastCommand = null
+                if(response?.result == "OK"){
+                    log.trace "Player Status is: Stopped"
+                    sendEvent(name: "status", value: "Stopped")	
+                }
+            }    
+
+            //Application.SetMute
+            if(state.lastCommand == "Application.SetMute"){
+                state.lastCommand = null
+                def muteStatus = "unmuted"
+                if(response?.result){ muteStatus = "muted"}else{ muteStatus = "unmuted"}
+                log.trace "Mute Status is: ${muteStatus}"
+                sendEvent(name: "mute", value: muteStatus)
+            }
+            //Application.SetVolume
+            if(state.lastCommand == "Application.SetVolume"){
+                state.lastCommand = null
+                def level = response?.result
+                log.trace "Volume Level is: ${level}"
+                sendEvent(name: "level", value: level)
+            }
+
+
+            //TODO: Also GET the VOLUME and MUTE status
+            if(state.lastCommand == "Application.GetProperties"){
+                //volume
+                sendEvent(name: "level", value: response?.result?.volume)
+                //muted
+                def muteStatus = "unmuted"
+                if( response?.result?.muted){ muteStatus = "muted"}else{ muteStatus = "unmuted"}
+                sendEvent(name: "mute", value: muteStatus)
+                //name
+                sendEvent(name: "kodiName", value: response?.result?.name)
+                //version
+                sendEvent(name: "kodiVersion", value: response?.result?.version?.revision)
+
+                //when we are done getting the volume level, let's refresh the current activity (current window)
+                todo << { getCurrentActivity() }
+            }
+
+            //TODO: Get the Player Properties
+            //Player.GetProperties params [ properties [
+            /*
+            [ boolean canrotate = False ]
+            [ boolean canrepeat = False ]
+            [ integer speed = 0 ]
+            [ boolean canshuffle = False ]
+            [ boolean shuffled = False ]
+            [ boolean canmove = False ]
+            [ boolean subtitleenabled = False ]
+            [ Player.Position.Percentage percentage = 0 ]
+            [ Player.Type type = "video" ]
+            [ Player.Repeat repeat = "off" ]
+            [ boolean canseek = False ]
+            [ Player.Subtitle currentsubtitle ]
+            [ Player.Subtitle[] subtitles ]
+            [ Global.Time totaltime ]
+            [ boolean canzoom = False ]
+            [ Player.Audio.Stream.Extended currentaudiostream ]
+            [ Playlist.Id playlistid = -1 ]
+            [ Player.Audio.Stream.Extended[] audiostreams ]
+            [ boolean partymode = False ]
+            [ Global.Time time ]
+            [ Playlist.Position position = -1 ]
+            [ boolean canchangespeed = False ]
+            */
+
+
+        }
+
+        log.debug "running todos"
+        def toReturn = []
+        todo.each{ toReturn << it.call() }
+        return toReturn
+        // TODO: handle 'activities' attribute
+
+        // TODO: handle 'status' attribute
+        // TODO: handle 'level' attribute
+
+        // TODO: handle 'mute' attribute
+	}
 }
 
 // handle commands
@@ -376,7 +427,7 @@ def startActivity(activity) {
         subsection = values[1]
     }
     
-    log.trace "Navigating to ${window} ΓåÆ ${subsection}"
+    log.trace "Navigating to ${window} → ${subsection}"
     
     //{"jsonrpc":"2.0","method":"GUI.ActivateWindow","params":{"window":"videos", "parameters": "movietitles"},"id":"1"}}
     def command = "GUI.ActivateWindow"
@@ -513,7 +564,10 @@ def refresh() {
 	log.debug "Executing 'refresh'"
     log.debug "Getting status from ${state.host}:${state.port}"
     
-    getActivePlayers()
+    def hubActions = []
+    hubActions << getActivePlayers()
+    hubActions << subscribeAction("/AVTransport/${state.udn}/event.xml")
+    hubActions
 }
 
 
@@ -587,6 +641,47 @@ def basicGet() {
 
 
 
+
+//------------------------- UPnP Callbacks -----------------------------------
+private subscribeAction(path, callbackPath="") {
+    log.trace "subscribe($path, $callbackPath)"
+    def address = getCallBackAddress()
+    def ip = getUDNAddress() //varies from example code -- we are passing in the UDN during setup from the Service Manager
+
+    def result = new physicalgraph.device.HubAction(
+        method: "SUBSCRIBE",
+        path: path,
+        headers: [
+            HOST: ip,
+            CALLBACK: "<http://${address}/notify$callbackPath>",
+            NT: "upnp:event",
+            TIMEOUT: "Second-28800"
+        ]
+    )
+
+    log.trace "SUBSCRIBE $ip to $path"
+
+    return result
+}
+
+
+//     RENEW
+/*
+SUBSCRIBE publisher path HTTP/1.1
+ HOST: publisher host:publisher port
+SID: uuid:subscription UUID
+TIMEOUT: Second-requested subscription duration
+*/
+
+
+//     UNSUBSCRIBE
+/*
+UNSUBSCRIBE publisher path HTTP/1.1
+ HOST: publisher host:publisher port
+SID: uuid:subscription UUID
+*/
+
+
 //--------------------------- Helper Methods -----------------------------------
 def splitURL(url){
 	log.debug "splitting atoms"
@@ -617,6 +712,11 @@ def splitURL(url){
 
 
 //----------------- IP and Port Hex Conversion Utilities -----------------------
+// gets the address of the hub
+private getCallBackAddress() {
+    return device.hub.getDataValue("localIP") + ":" + device.hub.getDataValue("localSrvPortTCP")
+}
+
 def getHostHexAddress(){
 	def hosthex = convertIPtoHex(state.host)
     def porthex = convertPortToHex(state.port)
@@ -625,6 +725,10 @@ def getHostHexAddress(){
 
 def getHostAddress(){
 	return state.host + ":" + state.port
+}
+
+def getUDNAddress(){
+	return state.udnAddress + ":" + state.udnPort
 }
 
 private String convertIPtoHex(ipAddress) { 
