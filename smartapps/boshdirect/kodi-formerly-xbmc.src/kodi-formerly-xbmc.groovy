@@ -202,15 +202,33 @@ def addDevice(){
         if(!d) {
             def newDevice = devices.find { (it.value.mac) == dni }
             def deviceName = newDevice?.value.name
+            def udn = getUDN(newDevice.key)
+            //d.networkAddress = lanEvent.networkAddress
+            //d.deviceAddress = lanEvent.deviceAddress
+            log.debug newDevice
+            def udnAddress = convertHexToIP(newDevice?.value?.networkAddress)
+            def udnPort = convertHexToInt(newDevice?.value?.deviceAddress)
             if (!deviceName)
                 deviceName = getDeviceName() + "[${newDevice?.value.name}]" //TODO: this logic seems odd -- change to numbering?
-            d = addChildDevice(getNameSpace(), getDeviceName(), dni, newDevice?.value.hub, [label:"${deviceName}"])
-            d.setURL(newDevice.value?.url)
-            log.trace "Created ${d.displayName} with id $dni and url ${newDevice.value?.url}"
+            d = addChildDevice(getNameSpace(), getDeviceName(), dni, newDevice?.value.hub, [label:"${deviceName}", UDN: udn])
+            d.setupDevice(newDevice.value?.url, udn, udnAddress, udnPort)
+            log.trace "Created ${d.displayName} with id '$dni', IP '$udnAddress', PORT '$udnPort', UDN '${udn}' and url ${newDevice.value?.url}"
         } else {
             log.trace "${d.displayName} with id $dni already exists"
         }
     }
+}
+
+/**
+ * Parse out the UDN and return it
+ * Gets the first item afer the ':'
+ *
+ * @param USN
+ * @return a UDN string
+ */
+def getUDN(USN){
+	def parts = USN.tokenize(":")
+    parts[1]
 }
 
 
@@ -220,17 +238,6 @@ def addDevice(){
 /*------------------------------------------------------------------------------------------------------------------------*/
 /*------------------------------------------------------------------------------------------------------------------------*/
 
-/**
- * Define our XML parsers
- *
- * @return mapping of root-node <-> parser function
- */
-def getParsers() {
-    [
-        "root" : "parseDESC",
-        "info" : "parseINFO"
-    ]
-}
 
 /**
  * Called when location has changed, contains information from
@@ -247,14 +254,7 @@ def onLocation(evt) {
     //log.debug "LAN EVENT: ${lanEvent}"
 
     // Determine what we need to do...
-    if (lanEvent?.ssdpTerm?.contains(getDeviceType()) 
-        /*
-        &&
-        (getUSNQualifier() == null ||
-         lanEvent?.ssdpUSN?.contains(getUSNQualifier())
-        )
-        */
-       )
+    if ( lanEvent?.ssdpTerm?.contains(getDeviceType()) )
     {
         parseSSDP(lanEvent)
     }
@@ -263,18 +263,8 @@ def onLocation(evt) {
         lanEvent.headers."content-type".contains("xml")
         )
     {
-        def parsers = getParsers()
         def xmlData = new XmlSlurper().parseText(lanEvent.body)
-
-		//log.debug "RECEIVED: ${xmlData}"
-        //state.xml = xmlData
-        
         parseDESC(xmlData)
-        /*// Let each parser take a stab at it
-        parsers.each { node,func ->
-            if (xmlData.name() == node)
-                "$func"(xmlData)
-        }*/
     }
 }
 
@@ -288,14 +278,12 @@ private def parseDESC(xmlData) {
 
     def devicetype = getDeviceType().toLowerCase()
     def devicetxml = xmlData?.device?.deviceType?.text().toLowerCase() //body.device.deviceType.text().toLowerCase()
-    
 
     // Make sure it's the type we want
     if (devicetxml == devicetype) {
         def devices = getDevices()
         def device = devices.find {it?.key?.contains(xmlData?.device?.UDN?.text())}
         if (device && !device.value?.verified) {
-            // Unlike regular DESC, we cannot trust this just yet, parseINFO() decides all
             def friendlyName = xmlData?.device?.friendlyName?.text()
             def modelName = xmlData?.device?.modelName?.text()
             def manufacturerName = xmlData?.device?.manufacturer?.text()
