@@ -11,7 +11,8 @@ There are two components needed for the Kodi integration to work.
  
 You must publish both the SmartApp and Device Type in the SmartThings IDE for everything to work properly.
 
-### GitHub Integration
+**Option 1: GitHub Integration**
+
 The best way to get updates for Kodi for SmartThings is to enable GitHub integration and add my repository. If you don't know what GitHub is, see the [Manual Install](#user-content-manual-install) method below:
 
 1. Open the IDE and navigate to `My SmartApps` or `My Device Handlers`
@@ -24,7 +25,8 @@ The best way to get updates for Kodi for SmartThings is to enable GitHub integra
 
 Now whenever you need to update to the latest version, you can choose `↓ Update from Repo`, select `ST-Kodi` and get your updates.
 
-### Manual Install
+**Option 2: Manual Install**
+
 While using the GitHub integration is the recommended method for installing the Kodi SmartApp, you can also install the SmartApp and Device type manually.
 
 Follow the instructions from the [ThingsThatAreSmart.wiki](http://thingsthataresmart.wiki/index.php?title=Using_Custom_Code#Using_a_Custom_SmartApp) on how to install a custom device type and SmartApp.
