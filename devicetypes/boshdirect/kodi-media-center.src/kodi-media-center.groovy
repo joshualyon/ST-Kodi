@@ -3,6 +3,8 @@
  *
  *  Copyright 2016 Josh Lyon
  *
+ *	!!!IMPORTANT!!! Feel free to learn from this code, but please don't STEAL IT / COPY-PASTE parts of it
+ *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
  *
@@ -77,30 +79,30 @@ metadata {
         
         //----------------inputs-------------------
         //Row 3
-        standardTile("input.home", "device.currentActivity", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
+        standardTile("input.home", "device.status", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
             state "default", action:"inputHome", label: "Home", icon: "st.Home.home2"
         }
-        valueTile("input.up", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
+        valueTile("input.up", "device.status", decoration: "flat", height: 2, width: 2) {
             state "default", action:"inputUp", label: '↑'
         }
-        valueTile("input.info", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
+        valueTile("input.info", "device.status", decoration: "flat", height: 2, width: 2) {
             state "default", action:"inputInfo", label: "  INFO  "
         }
         //Row 4
-        valueTile("input.left", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
+        valueTile("input.left", "device.status", decoration: "flat", height: 2, width: 2) {
             state "default", action:"inputLeft", label: "←"
         }
-        valueTile("input.select", "device.currentActivity",  decoration: "flat", height: 2, width: 2) {
+        valueTile("input.select", "device.status",  decoration: "flat", height: 2, width: 2) {
             state "default", action:"inputSelect", label: "SELECT"
         }
-        valueTile("input.right", "device.currentActivity",  decoration: "flat", height: 2, width: 2) {
+        valueTile("input.right", "device.status",  decoration: "flat", height: 2, width: 2) {
             state "default", action:"inputRight", label: "→"
         }
         //Row 5
-        valueTile("input.back", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
+        valueTile("input.back", "device.status", decoration: "flat", height: 2, width: 2) {
             state "default", action:"inputBack", label: "  BACK  "
         }
-        valueTile("input.down", "device.currentActivity", decoration: "flat", height: 2, width: 2) {
+        valueTile("input.down", "device.status", decoration: "flat", height: 2, width: 2) {
             state "default", action:"inputDown", label: "↓"
         }
         standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
@@ -168,29 +170,41 @@ metadata {
 }
 
 preferences{
+	section("Authorization (optional)"){
+    	input("username", "text", title: "Username", description: "eg. kodi", autoCorrect: false, capitalization: "none")
+        input("password", "text", title: "Password", description: "eg. kodi", autoCorrect: false, capitalization: "none")
+    }
 	section("IMPORTANT: Only use the override if instructed to do so!"){
     	paragraph "Your Kodi devices should be automatically discovered using the Kodi SmartApp. Overriding the URL here may cause unexpected results. ONLY USE THE OVERRIDE IF YOU KNOW WHAT YOU ARE DOING"
-		input("overrideURL", "text", title: "Override URL", description: "Full URL to Kodi Webserver, including port")
+		input("overrideURL", "text", title: "Override URL [ADVANCED]", description: "Full URL to Kodi Webserver, including port", autoCorrect: false, capitalization: "none")
     }
 }
 
 
 //---------------- Setup Methods ----------------
 def installed(){
-	//refresh()
     log.debug "installed"
+    sendEvent(name: "mute", value: "unmuted")
+    sendEvent(name: "level", value: 100)
+    //We will manually call setupDevice from the Service Manager SmartApp
 }
 def updated(){
 	log.debug "updated"
     initialize()
-    
+    //If the user updated their preferences, we need to reinitialize things with the new settings
 }
 
 def initialize(){
 	log.debug "overriding the IP Address based on input preferences ${overrideURL}"
-    setURL(overrideURL)
+    //if the override URL is set, let's use it
+    if(overrideURL) setURL(overrideURL)
+    runIn(5, CheckEventSubscription) //check the subscriptions and setup the schedule
 }
 
+/**
+ * Called from the Service Manager SmartApp to initialize the URL to control the Kodi instance
+ * and the device information needed for UPnP subscription and eventing end points 
+ **/
 def setupDevice(url, udn, udnAddress, udnPort){
     state.udn = udn
     log.debug "Received: $udnAddress : $udnPort"
@@ -199,6 +213,9 @@ def setupDevice(url, udn, udnAddress, udnPort){
     log.trace "Setup device with address ${udnAddress}:${udnPort} and UDN: ${udn}"
     
     setURL(url)
+    
+    CheckEventSubscription() //check the subscriptions and setup the schedule
+    refresh() // get the initial full set of data from the Kodi instance
 }
 
 def setURL(url){
@@ -217,16 +234,50 @@ def parse(String description) {
     def todo = []
     def map = stringToMap(description)
     def msg = parseLanMessage(description)
-    if(msg.headers && msg.body){
+    if(msg.headers){
     //if(map.headers && map.body){
     	log.trace "Response Received (with Headers and Body)"
         
-        //log.debug "HDR: ${map.headers.decodeBase64()}"
         log.debug "HEADER: ${msg.headers}"
+        
+        //Check for authorization issues
+        if(msg.header.toLowerCase().contains("unauthorized")){
+            def authMessage = "UNAUTHORIZED: Edit this device to set your Kodi Username/Password"
+            log.debug authMessage
+            sendEvent(name: "trackDescription", value: authMessage, descriptionText: authMessage)
+            //TODO: can we redirect to the authorization screen automatically?
+        }
+        
+        
         def server = msg?.headers?.server
-        //nts:upnp:propchange
         //sid:xxxx-xxxxx <-- Subscriber ID?
         //TIMEOUT
+        
+        //[nts:upnp:propchange, nt:upnp:event, content-length:1243, 
+        //sid:uuid:2ac7714b-1bd6-df84-512e-ff9b4ce73bb2, host:192.168.1.118:39500, 
+        // seq:0, user-agent:Neptune/1.1.3, content-type:text/xml; charset="utf-8", 
+        // notify /notify http/1.1:null] 
+        if(msg?.headers?.sid && msg?.headers?.timeout){
+        	log.debug "Current Event Subscriptions: ${state.transportSID}"
+        	//if the SID map is not created, let's create it
+        	if(!state.transportSID) state.transportSID = [:]
+            
+        	//capture the SID
+            def sid = msg?.headers?.sid.replaceAll("uuid:", "")
+            log.debug "Event SID: $sid"
+            
+            //capture the timeout
+            def timeout =  msg?.headers?.timeout.replaceAll("Second-", "")
+            log.debug "Event Subscription Timeout: $timeout"
+            
+            def expires = now() as long
+            log.debug "The time now is $expires"
+            expires += (timeout.toLong() * 1000) //multiple the expiration in seconds * 1000 to get millis
+            log.debug "The subscription will expire at $expires"
+            //update the item in the state map
+            state.transportSID << ["$sid": expires]
+        }
+        
         if(msg?.headers?.nt && msg?.headers?.nt.toLowerCase().contains("upnp:event")){ //server?.contains("UPnP") && server.contains("DLNA")
         	//UPnP Event Subscription Response
             log.trace "UPnP Response"
@@ -235,22 +286,39 @@ def parse(String description) {
             
             //<e:propertyset xmlns:e="urn:schemas-upnp-org:event-1-0"><e:property><LastChange>&lt;Event xmlns="urn:schemas-upnp-org:metadata-1-0/AVT/"&gt;&lt;InstanceID val="0"&gt;&lt;TransportState val="PAUSED_PLAYBACK"/&gt;&lt;/InstanceID&gt;&lt;/Event&gt;</LastChange></e:property></e:propertyset>
             //as long as we have the LastChange item, let's take its HTML encoded contents and parse them as XML
+            def transportState = ""
             if(!msg.xml?.property?.LastChange.isEmpty()){
             	//<Event xmlns="urn:schemas-upnp-org:metadata-1-0/AVT/"><InstanceID val="0"><TransportState val="PAUSED_PLAYBACK"/></InstanceID></Event>
                 //Parse the inner content of the last change (which was HTML encoded)
                 def event = new XmlSlurper().parseText(msg.xml?.property?.LastChange.toString())
                 //And if we got the TransportState, let's update the event status
                 if(!event.InstanceID.TransportState.isEmpty()){
-                	def transportState = event.InstanceID.TransportState.@val
+                	transportState = event.InstanceID.TransportState.@val
                     def transportStates = [PAUSED_PLAYBACK: "Paused", PLAYING: "Playing", STOPPED: "Stopped"]
                     def status = transportStates."$transportState"
                     log.debug "Current state is: ${status}"
                     sendEvent(name:"status", value: status)
+                    
+                    if(transportState == "STOPPED")
+                    	clearTrack()
+                }
+                
+                //Check for first playback as a large amount of data gets sent over: CurrentTrackMetaData
+                if(!event.InstanceID.CurrentTrackMetaData.isEmpty() && transportState != "STOPPED"){ //need to check if it's stopped as on the first subscription, KODI will send over the last track data
+                	log.debug "WE HAVE METADATA"
+                    //Parse the inner content of the CurrentTrackMetadata (which was HTML encoded)
+                    def metadata = new XmlSlurper().parseText(event.InstanceID.CurrentTrackMetaData.@val.toString())
+                    log.debug "METADATA: $metadata"
+                    //And if we got the TransportState, let's update the event status
+                    if(!metadata.item?.title.isEmpty()){
+                        def title = metadata.item.title
+                        log.debug "Current playing title is: ${title}"
+                        sendEvent(name:"trackDescription", value: title)
+                    }
                 }
             }
-            //TODO: Check for first playback as a large amount of data gets sent over: CurrentTrackMetaData
         }
-        else{
+        else if(msg.body){
             def bodyString = new String(map.body.decodeBase64())
 
             //log.debug "BODY: $bodyString"
@@ -261,6 +329,14 @@ def parse(String description) {
 
             log.debug response
             log.debug "Last Command: ${state.lastCommand}"
+            
+            //If we were previously unauthorized and now controls are working, let's clear out the warning message
+            //log.debug "STATUS: ${msg.status}"
+            if(state.lastCommand 
+            	&& device?.currentValue("trackDescription")?.contains("UNAUTHORIZED")
+                && msg.status == 200){
+                clearTrack()
+            }
 
             //if we were requesting the current active players
             if(state.lastCommand == "Player.GetActivePlayers"){
@@ -288,9 +364,7 @@ def parse(String description) {
                 if(!response?.result){
                     log.trace "NO PLAYERS Active"
                     //clear out the track data if no players are active
-                    sendEvent(name: "trackDescription", value: "")
-                    sendEvent(name: "trackData", value: "")
-                    sendEvent(name: "status", value: "Inactive")
+                    clearTrack()
                     //if we don't have anything playing, let's get the application properties 
                     // (since it's normally triggered after parsing the current player data)
                     todo << { getApplicationProperties() }
@@ -413,6 +487,12 @@ def parse(String description) {
 
         // TODO: handle 'mute' attribute
 	}
+}
+
+def clearTrack(){
+	sendEvent(name: "trackDescription", value: "")
+	sendEvent(name: "trackData", value: "")
+	sendEvent(name: "status", value: "Inactive")
 }
 
 // handle commands
@@ -564,9 +644,10 @@ def refresh() {
 	log.debug "Executing 'refresh'"
     log.debug "Getting status from ${state.host}:${state.port}"
     
+    CheckEventSubscription()
+    
     def hubActions = []
     hubActions << getActivePlayers()
-    hubActions << subscribeAction("/AVTransport/${state.udn}/event.xml")
     hubActions
 }
 
@@ -605,6 +686,12 @@ def sendCommand(command, parameters=null, id=null){
     def headers = [:] 
     headers.put("HOST", getHostAddress())
     headers.put("Content-Type", "application/json")
+    
+    if(username){
+    	def pair ="$username:$password"
+        def basicAuth = pair.bytes.encodeBase64();
+    	headers.put("Authorization", "Basic " + basicAuth )
+    }
 
     def method = "POST"
     
@@ -643,6 +730,39 @@ def basicGet() {
 
 
 //------------------------- UPnP Callbacks -----------------------------------
+def CheckEventSubscription(){
+	//check to see if our UPnP Event Subscriptions are still valid
+    def todo = []
+    def allTransport = state.transportSID ?: [:]
+    
+    //remove any of the expired or invalid subscriptions
+    log.debug "Checking for expired subscriptions in $allTransport"
+    def toRemove = allTransport.findAll { 
+    	def expiration = it.value.toLong()
+    	def isRemovable = !expiration || expiration < now() || expiration == 0 
+        isRemovable
+    }
+    log.debug "Unsubscribing from and removing: $toRemove"
+    toRemove.each { todo << unsubscribeAction("/AVTransport/${state.udn}/event.xml", it.key) }
+    
+    //TODO: We really only need to keep one of each subscription type live
+    //Refresh any of the still valid subscriptions
+    def toKeep = allTransport - toRemove
+    state.transportSID = toKeep
+    log.debug "Refreshing subscription for: $toKeep"
+    toKeep.each { todo << renewSubscription("/AVTransport/${state.udn}/event.xml", it.key) }
+    
+    //if we don't have any valid subscriptions left, let's subscribe so we have at least one
+    if(toKeep.size() == 0)
+    	todo << subscribeAction("/AVTransport/${state.udn}/event.xml")
+
+    runIn(300, CheckEventSubscription)
+    def numActions = todo.size()
+    log.debug "Returning $numActions HubActions"
+    sendHubCommand(todo) //force the send of the HubActions -- they don't seem to send from updated()
+
+}
+
 private subscribeAction(path, callbackPath="") {
     log.trace "subscribe($path, $callbackPath)"
     def address = getCallBackAddress()
@@ -663,9 +783,34 @@ private subscribeAction(path, callbackPath="") {
 
     return result
 }
+/*
+SUBSCRIBE publisher path HTTP/1.1
+ HOST: publisher host:publisher port
+ USER-AGENT: OS/version UPnP/1.1 product/version
+CALLBACK: <delivery URL>
+NT: upnp:event
+TIMEOUT: Second-requested subscription duration
+*/
 
+private renewSubscription(path, SID){
+	log.trace "renewSubscription($path, $SID)"
+    def address = getCallBackAddress()
+    def ip = getUDNAddress() //We are passing in the UDN during setup from the Service Manager
 
-//     RENEW
+    def result = new physicalgraph.device.HubAction(
+        method: "SUBSCRIBE",
+        path: path,
+        headers: [
+            HOST: ip,
+            SID: "uuid:${SID}",
+            TIMEOUT: "Second-28800" //8 hours isn't respected by Kodi
+        ]
+    )
+
+    log.trace "RENEW SUBSCRIPTION $ip for $SID"
+
+    return result
+}
 /*
 SUBSCRIBE publisher path HTTP/1.1
  HOST: publisher host:publisher port
@@ -673,7 +818,24 @@ SID: uuid:subscription UUID
 TIMEOUT: Second-requested subscription duration
 */
 
+private unsubscribeAction(path, SID){
+	log.trace "unsubscribeAction($path, $SID)"
+    def address = getCallBackAddress()
+    def ip = getUDNAddress() //We are passing in the UDN during setup from the Service Manager
 
+    def result = new physicalgraph.device.HubAction(
+        method: "UNSUBSCRIBE",
+        path: path,
+        headers: [
+            HOST: ip,
+            SID: "uuid:${SID}"
+        ]
+    )
+
+    log.trace "UNSUBSCRIBE FROM $ip at $path"
+
+    return result
+}
 //     UNSUBSCRIBE
 /*
 UNSUBSCRIBE publisher path HTTP/1.1
