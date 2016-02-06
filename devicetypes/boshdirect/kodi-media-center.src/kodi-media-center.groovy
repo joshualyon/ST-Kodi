@@ -759,7 +759,8 @@ def CheckEventSubscription(){
     runIn(300, CheckEventSubscription)
     def numActions = todo.size()
     log.debug "Returning $numActions HubActions"
-    sendHubCommand(todo) //force the send of the HubActions -- they don't seem to send from updated()
+    //sendHubCommand(todo) //force the send of the HubActions -- they don't seem to send from updated()
+    todo.each{ sendHubCommand(it) }
 
 }
 
