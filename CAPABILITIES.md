@@ -76,11 +76,19 @@ The following capabilities are implemented in this device type:
 * `getCurrentActivity()` - get the current activity; sets `currentActivity` and `currentWindowID`
 * `poll` - sends the `refresh()` command
 * `refresh()` - gets the updated media playback status and forces a refresh of event subscriptions
+ 
 
-Not Implemented
+**Play File/Playlist**
 
-* `playTrack()`
-* `playText()`
-* `setTrack()`
-* `resumeTrack()`
-* `restoreTrack()`
+* `playFile(filename)` - starts playing a file (can be a local or HTTP streamed file!)
+* `playPlaylist(playlistid)` - starts playing the specified playlist (by ID) `(0: Music, 1: Video, 2: Pictures)`
+* `clearPlaylist(playlistid)` - clears the specified playlist (by ID)
+* `addToPlaylist(playlistid, filename)` - adds a file to the specified playlist `(0: Music, 1: Video, 2: Pictures)`
+
+**Music Player Capabilities** (those not covered by above sections)
+
+* `playTrack(filename)` - maps to `playFile(filename)`
+* `playText()` - NOT IMPLEMENTED
+* `setTrack(filename)` - maps to `addToPlaylist(1, filename)`
+* `resumeTrack()` - NOT IMPLEMENTED
+* `restoreTrack()` - NOT IMPLEMENTED
