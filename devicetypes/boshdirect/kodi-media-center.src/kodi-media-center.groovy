@@ -22,6 +22,7 @@ metadata {
 	definition (name: "Kodi Media Center", namespace: "boshdirect", author: "Josh Lyon") {
 		capability "Media Controller"
 		capability "Music Player"
+        capability "Switch"
 		capability "Polling"
 		capability "Refresh"
         
@@ -312,7 +313,7 @@ def parse(String description) {
                     def transportStates = [PAUSED_PLAYBACK: "Paused", PLAYING: "Playing", STOPPED: "Stopped"]
                     def status = transportStates."$transportState"
                     log.debug "Current state is: ${status}"
-                    sendEvent(name:"status", value: status)
+                    setStatus(status)
                     
                     if(transportState == "STOPPED")
                     	clearTrack()
@@ -417,7 +418,7 @@ def parse(String description) {
                 log.trace "speed: ${response?.result?.speed}"
                 def status = response?.result?.speed > 0 ? "Playing" : "Paused"
                 log.trace "Player Status is: ${status}"
-                sendEvent(name: "status", value: status)
+                setStatus(status)
             }
 
             //handle the stop command
@@ -425,7 +426,7 @@ def parse(String description) {
                 state.lastCommand = null
                 if(response?.result == "OK"){
                     log.trace "Player Status is: Stopped"
-                    sendEvent(name: "status", value: "Stopped")	
+                    setStatus("Stopped")
                 }
             }    
 
@@ -509,7 +510,23 @@ def parse(String description) {
 def clearTrack(){
 	sendEvent(name: "trackDescription", value: "")
 	sendEvent(name: "trackData", value: "")
-	sendEvent(name: "status", value: "Inactive")
+    setStatus("Stopped") //formerly Inactive
+}
+
+def setStatus(status){
+	sendEvent(name: "status", value: status)
+	//map playing/paused/stopped/inactive to on/off
+    switch(status){
+    	case "Playing":
+        	sendEvent(name: "switch", value: "on")
+        	break;
+        case "Paused":
+        case "Stopped":
+        case "Inactive":
+        default:
+        	sendEvent(name: "switch", value: "off")
+        	break;
+    }
 }
 
 // handle commands
@@ -667,6 +684,11 @@ def refresh() {
     hubActions << getActivePlayers()
     hubActions
 }
+
+
+//--------map Switch On/Off to usable commands
+def on(){ play() }
+def off(){ pause() }
 
 
 
