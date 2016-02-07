@@ -45,6 +45,11 @@ metadata {
         command "inputSelect"
         command "inputHome"
         
+        command "playFile", [ "string" ]
+        command "playPlaylist", [ "number" ]
+        command "clearPlaylist", [ "number" ]
+        command "addToPlaylist", [ "number", "string" ]
+        
         command "getActivePlayers"
         command "getVideoPlayerStatus", [ "number" ]
 	}
@@ -655,6 +660,42 @@ def inputSelect(){ sendCommand("Input.Select") }
 def inputShowCodec(){ sendCommand("Input.ShowCodec") }
 def inputShowOSD(){ sendCommand("Input.ShowOSD") }
 
+
+//-------------Player.Open()-------------------
+//Play a single video from file
+def playFile(fileName){
+    //{"jsonrpc":"2.0","id":"1","method":"Player.Open","params":{"item":{"file":"Media/Big_Buck_Bunny_1080p.mov"}}}
+    sendCommand("Player.Open", ["item": ["file": fileName]])
+}
+//Play a Playlist given the numeric playlist ID
+def playPlaylist(playlistid){
+    //{"jsonrpc":"2.0","id":1,"method":"Player.Open","params":{"item":{"playlistid":1},"options":{"repeat":"all"}}}
+    sendCommand("Player.Open", ["item": [ "playlistid": playlistid ]]) //does not include the repeat option
+}
+//Clear a Playlist given the numeric playlist ID
+def clearPlaylist(playlistid){
+    //{"jsonrpc":"2.0","id":1,"method":"Playlist.Clear","params":{"playlistid":1}}
+    sendCommand("Playlist.Clear", ["playlistid": playlistid])
+}
+//add a file to a playlist, given the file and the numeric playlist id
+def addToPlaylist(playlistid, fileName){
+	//{"jsonrpc":"2.0","id":1,"method":"Playlist.Add","params":{"playlistid":1,"item":{"file":"Media/Big_Buck_Bunny_1080p.mov"}}}
+	sendCommand("Playlist.Add", ["playlistid": playlistid, "item": ["file": fileName]])
+}
+
+//------------Music Player - Mapped Commands-----------------
+def playTrack(filename){ playFile(filename) }
+def playText(textToSpeak){
+	//TODO: implement TTS
+}
+//Default playlists: music (playlistid = 0), video (1) and pictures (2) 
+def setTrack(filename){ addToPlaylist(1, filename) }
+def resumeTrack(someMap){ 
+	//TODO: implement resumeTrack ("Set and play the given track and maintain queue position")
+}
+def restoreTrack(someMap){ 
+	//TODO: implement restoreTrack ("Restore the track with the given data")
+}
 
 //------------- Player Status ------
 def getActivePlayers(){ sendCommand("Player.GetActivePlayers") }
