@@ -79,7 +79,25 @@ def updated() {
     log.trace "Updated with settings: ${settings}"
     unsubscribe()
     initialize()
+    scheduleChecks()
 }
+
+def scheduleChecks(){
+	//set the CheckEventSubscription to run every 20 minutes
+    def minutes = 20
+    def cron = "0 0/${minutes} * * * ?" //run every 20 minutes
+   	schedule(cron, checkHandler)
+    log.trace "Event Subscription Check is scheduled for every ${minutes} minutes"
+}
+
+def checkHandler(){
+	log.trace "Checking subscriptions for child devices."
+    def devices = getChildDevices()
+	devices.each {
+		it.CheckEventSubscription()
+	}
+}
+
 
 /**
  * Called by SmartThings Cloud when user uninstalls the app
