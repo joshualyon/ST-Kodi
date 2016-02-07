@@ -18,10 +18,10 @@ The best way to get updates for Kodi for SmartThings is to enable GitHub integra
 1. Open the IDE and navigate to `My SmartApps` or `My Device Handlers`
 2. Select `Settings`
 3. Select Add new repository`
-4. Enter the following details:
-   Owner: `boshdirect`
-   Name: `ST-Kodi`
-   Branch: `master`
+4. Enter the following details:  
+   Owner: `iamcanadian2222`  
+   Name: `ST-Kodi`  
+   Branch: `master`  
 
 Now whenever you need to update to the latest version, you can choose `↓ Update from Repo`, select `ST-Kodi` and get your updates.
 
