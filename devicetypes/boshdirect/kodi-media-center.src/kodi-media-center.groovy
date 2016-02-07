@@ -150,8 +150,8 @@ metadata {
 
         
         //For the lists...
-        standardTile("mainOverview", "device.status", decoration: "flat", height: 2, width: 2) {
-            state "default", action:"refresh", icon: "st.Electronics.electronics18"
+        standardTile("mainOverview", "device.status", height: 1, width: 1, canChangeIcon: true) {
+            state "default", label: '${currentValue}', action:"playPause", icon: "st.Electronics.electronics18"
         }
         
         main(["mainOverview"])
@@ -198,7 +198,10 @@ def initialize(){
 	log.debug "overriding the IP Address based on input preferences ${overrideURL}"
     //if the override URL is set, let's use it
     if(overrideURL) setURL(overrideURL)
-    runIn(5, CheckEventSubscription) //check the subscriptions and setup the schedule
+    //immediately check the subscriptions
+    runIn(5, CheckEventSubscription) //wait a few seconds since the updated seems to get hit twice??
+    //schedule the subscription checks
+    scheduleChecks()
 }
 
 /**
@@ -214,8 +217,14 @@ def setupDevice(url, udn, udnAddress, udnPort){
     
     setURL(url)
     
-    CheckEventSubscription() //check the subscriptions and setup the schedule
-    refresh() // get the initial full set of data from the Kodi instance
+    //get the initial full set of data from the Kodi instance
+    refresh() 
+    
+    //check the subscriptions immediately
+    CheckEventSubscription() 
+    
+    //schedule the subscription checks
+	scheduleChecks()
 }
 
 def setURL(url){
@@ -226,6 +235,12 @@ def setURL(url){
 
 def getURL(){
 	state.destURL
+}
+
+def scheduleChecks(){
+	//set the CheckEventSubscription to run every 20 minutes
+    def cron = "0 0/20 * * * ?" //run every 20 minutes
+   	schedule(cron, CheckEventSubscription)
 }
 
 //-------------- parse events into attributes ----------------
@@ -318,14 +333,16 @@ def parse(String description) {
                 }
             }
         }
-        else if(msg.body){
-            def bodyString = new String(map.body.decodeBase64())
+        //Response to KODI commands via JSON RPC
+        else if(msg.body && msg.headers?.'content-type'?.contains("json")){ //don't try to respond to XML responses
+            //def bodyString = new String(map.body.decodeBase64())
 
             //log.debug "BODY: $bodyString"
             //log.debug "BODY: $msg.data"
 
-            def slurper = new JsonSlurper()
-            def response = slurper.parseText(bodyString)
+            //def slurper = new JsonSlurper()
+            //def response = slurper.parseText(bodyString)
+            def response = msg.json
 
             log.debug response
             log.debug "Last Command: ${state.lastCommand}"
@@ -756,7 +773,7 @@ def CheckEventSubscription(){
     if(toKeep.size() == 0)
     	todo << subscribeAction("/AVTransport/${state.udn}/event.xml")
 
-    runIn(300, CheckEventSubscription)
+    //runIn(300, CheckEventSubscription) -- replaced with schedule(cron, event)
     def numActions = todo.size()
     log.debug "Returning $numActions HubActions"
     //sendHubCommand(todo) //force the send of the HubActions -- they don't seem to send from updated()
