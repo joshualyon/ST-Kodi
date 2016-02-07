@@ -204,10 +204,9 @@ def initialize(){
 	log.debug "overriding the IP Address based on input preferences ${overrideURL}"
     //if the override URL is set, let's use it
     if(overrideURL) setURL(overrideURL)
+    
     //immediately check the subscriptions
     runIn(5, CheckEventSubscription) //wait a few seconds since the updated seems to get hit twice??
-    //schedule the subscription checks
-    scheduleChecks()
 }
 
 /**
@@ -228,9 +227,6 @@ def setupDevice(url, udn, udnAddress, udnPort){
     
     //check the subscriptions immediately
     CheckEventSubscription() 
-    
-    //schedule the subscription checks
-	scheduleChecks()
 }
 
 def setURL(url){
@@ -241,12 +237,6 @@ def setURL(url){
 
 def getURL(){
 	state.destURL
-}
-
-def scheduleChecks(){
-	//set the CheckEventSubscription to run every 20 minutes
-    def cron = "0 0/20 * * * ?" //run every 20 minutes
-   	schedule(cron, CheckEventSubscription)
 }
 
 //-------------- parse events into attributes ----------------
