@@ -71,7 +71,7 @@ The following capabilities are implemented in this device type:
 * `getVideoPlayerStatus(number)` - gets the status of a specific player
 * `getCurrentActivity()` - get the current activity; sets `currentActivity` and `currentWindowID`
 * `poll` - sends the `refresh()` command
-* `refresh()` - gets the updated media playback status
+* `refresh()` - gets the updated media playback status and forces a refresh of event subscriptions
 
 Not Implemented
 
