@@ -13,6 +13,7 @@ The following capabilities are implemented in this device type:
 
 * `Media Controller`
 * `Music Player`
+* `Switch`
 * `Polling`
 * `Refresh`
 
@@ -23,6 +24,7 @@ The following capabilities are implemented in this device type:
 * `level` - the current volume level (eg. 100)
 * `mute` - the current mute status (eg. `muted`, `unmuted`)
 * `status` - current playback status of the active player `Playing`, `Paused`, `Stopped`
+* `switch` - maps from the `status` attribute (eg. on = "Playing"; off = "Paused" or "Stopped")
 * `destURL` - the destination URL used to control your Kodi endpoint
 * `currentWindowID` - the currently active Window ID (useful for determining the current activity)
 * `currentActivity` - the currently active Activity (eg. `Video`, `Fullscreen Video`
@@ -62,6 +64,8 @@ The following capabilities are implemented in this device type:
 * `play()` - send the play/pause command
 * `pause()` - send the play/pause command
 * `stop()` - send the stop command
+* `on()` - maps to `play()`
+* `off()` - maps to `pause()`
 * `nextTrack()` - send the next track command
 * `previousTrack()` - send the previous track command
 
