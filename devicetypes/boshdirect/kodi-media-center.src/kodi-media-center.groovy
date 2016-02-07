@@ -115,9 +115,9 @@ metadata {
         standardTile("input.previous", "device.status", decoration: "flat", height: 2, width: 2) {
             state "default", action:"previousTrack", icon:"st.sonos.previous-btn" //, label: "◀◀"
         }
-        standardTile("input.playpause", "device.status", inactiveLabel: false, decoration: "flat", height: 2, width: 2) {
-            state "paused", action:"play",icon: "st.sonos.play-btn", nextState:"playing"//, label: "Play" 
-            state "playing", action:"pause",icon: "st.sonos.pause-btn", nextState:"paused"//, label: "Pause" //the second character is pause ❚❚ ▶/⏸
+        standardTile("input.playpause", "device.status", decoration: "flat", height: 2, width: 2) {
+            state "Paused", action:"play",icon: "st.sonos.play-btn", nextState:"playing"//, label: "Play" 
+            state "Playing", action:"pause",icon: "st.sonos.pause-btn", nextState:"paused"//, label: "Pause" //the second character is pause ❚❚ ▶/⏸
             
         }
         standardTile("input.next", "device.status", decoration: "flat", height: 2, width: 2) {
