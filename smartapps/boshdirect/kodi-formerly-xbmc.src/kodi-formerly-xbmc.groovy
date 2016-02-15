@@ -519,5 +519,6 @@ private Boolean hasAllHubsOver(String desiredFirmware)
  */
 private List getRealHubFirmwareVersions()
 {
-    return location.hubs*.firmwareVersionString.findAll { it }
+	def realHubs = location.hubs*.findAll{ it.type == "PHYSICAL" } //filter out the virtual hubs -- only get physical hubs
+    return realHubs*.firmwareVersionString.findAll { it }
 }
