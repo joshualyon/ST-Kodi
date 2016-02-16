@@ -307,9 +307,6 @@ def parse(String description) {
                 def event = new XmlSlurper().parseText(msg.xml?.property?.LastChange.toString())
                 //And if we got the TransportState, let's update the event status
                 if(!event.InstanceID.TransportState.isEmpty()){
-                	def playerID = event.InstanceID.@val
-                    sendEvent(name: "playerID", value: playerID)
-                    
                     transportState = event.InstanceID.TransportState.@val
                     def transportStates = [PAUSED_PLAYBACK: "paused", PLAYING: "playing", STOPPED: "stopped"]
                     def status = transportStates."$transportState"
@@ -331,6 +328,25 @@ def parse(String description) {
                         def title = metadata.item.title
                         log.debug "Current playing title is: ${title}"
                         sendEvent(name:"trackDescription", value: title)
+                    }
+                    
+                    
+                    //see if we have the UPnP object class type
+                    //def itemClass = metadata.'**'.find { it.name() == 'class' } //NOT ALLOWED
+                    //def itemClass = metadata.depthFirst().findAll { it.name() == 'class' } //NOT ALLOWED
+                    def itemClass = metadata.item.children().find{ it.name() == "class" }.toString()
+                    if(!itemClass.isEmpty()){
+                        log.debug "itemClass: $itemClass"
+                        def playerID = 1 //default to video
+                        if(itemClass.contains("video")) playerID = 1 //object.item.videoItem.movie
+                        else if(itemClass.contains("audio")) playerID = 0 //object.item.audioItem.musicTrack
+                        else if(itemClass.contains("imageItem")) playerID = 2 //object.item.imageItem.*
+                        else getActivePlayers() //if it's not a known item, fallback to getting the info via JSON-RPC
+                        sendEvent(name: "playerID", value: playerID)
+                    }
+                    else{
+                    	log.debug "item.upnp:class is empty. Falling back to Player.GetActive"
+                    	getActivePlayers()
                     }
                 }
             }
