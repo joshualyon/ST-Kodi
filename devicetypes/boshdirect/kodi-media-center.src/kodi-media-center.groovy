@@ -64,9 +64,9 @@ metadata {
         multiAttributeTile(name:"kodiMulti", type:"generic", width:6, height:4) {
           tileAttribute("device.status", key: "PRIMARY_CONTROL") {
           	attributeState("default", label: '--', backgroundColor:"#79b821")
-            attributeState("Paused", label:'Paused', icon: "st.sonos.pause-btn", backgroundColor:"#ffffff")
-            attributeState("Playing", label:'Playing', icon: "st.sonos.play-btn", backgroundColor:"#79b821")
-            attributeState("Stopped", label:'Stopped', icon: "st.sonos.stop-btn", backgroundColor:"#ffffff")
+            attributeState("paused", label:'Paused', icon: "st.sonos.pause-btn", backgroundColor:"#ffffff")
+            attributeState("playing", label:'Playing', icon: "st.sonos.play-btn", backgroundColor:"#79b821")
+            attributeState("stopped", label:'Stopped', icon: "st.sonos.stop-btn", backgroundColor:"#ffffff")
           }
           /*
           tileAttribute("device.trackDescription", key: "SECONDARY_CONTROL") {
@@ -123,8 +123,8 @@ metadata {
             state "default", action:"previousTrack", icon:"st.sonos.previous-btn" //, label: "◀◀"
         }
         standardTile("input.playpause", "device.status", decoration: "flat", height: 2, width: 2) {
-            state "Paused", action:"play",icon: "st.sonos.play-btn", nextState:"Playing"//, label: "Play" 
-            state "Playing", action:"pause",icon: "st.sonos.pause-btn", nextState:"Paused"//, label: "Pause" //the second character is pause ❚❚ ▶/⏸
+            state "paused", action:"play",icon: "st.sonos.play-btn", nextState:"playing"//, label: "Play" 
+            state "playing", action:"pause",icon: "st.sonos.pause-btn", nextState:"paused"//, label: "Pause" //the second character is pause ❚❚ ▶/⏸
             
         }
         standardTile("input.next", "device.status", decoration: "flat", height: 2, width: 2) {
@@ -159,8 +159,8 @@ metadata {
         //For the lists...
         standardTile("mainOverview", "device.status", height: 1, width: 1, canChangeIcon: true) {
             state "default", label: '${currentValue}', action:"playPause", backgroundColor: "#ffffff", icon: "st.Electronics.electronics18"
-            state "Paused", label: 'Paused', action:"play", nextState:"Playing", backgroundColor: "#ffffff", icon: "st.Electronics.electronics18"
-            state "Playing", label: 'Playing', action:"pause", nextState:"Paused", backgroundColor: "#79b821", icon: "st.Electronics.electronics18"
+            state "paused", label: 'Paused', action:"play", nextState:"playing", backgroundColor: "#ffffff", icon: "st.Electronics.electronics18"
+            state "playing", label: 'Playing', action:"pause", nextState:"paused", backgroundColor: "#79b821", icon: "st.Electronics.electronics18"
         }
         
         main(["mainOverview"])
@@ -311,7 +311,7 @@ def parse(String description) {
                     sendEvent(name: "playerID", value: playerID)
                     
                     transportState = event.InstanceID.TransportState.@val
-                    def transportStates = [PAUSED_PLAYBACK: "Paused", PLAYING: "Playing", STOPPED: "Stopped"]
+                    def transportStates = [PAUSED_PLAYBACK: "paused", PLAYING: "playing", STOPPED: "stopped"]
                     def status = transportStates."$transportState"
                     log.debug "Current state is: ${status}"
                     setStatus(status)
@@ -418,7 +418,7 @@ def parse(String description) {
             if(state.lastCommand == "Player.PlayPause"){
                 state.lastCommand = null
                 log.trace "speed: ${response?.result?.speed}"
-                def status = response?.result?.speed > 0 ? "Playing" : "Paused"
+                def status = response?.result?.speed > 0 ? "playing" : "paused"
                 log.trace "Player Status is: ${status}"
                 setStatus(status)
             }
@@ -428,7 +428,7 @@ def parse(String description) {
                 state.lastCommand = null
                 if(response?.result == "OK"){
                     log.trace "Player Status is: Stopped"
-                    setStatus("Stopped")
+                    setStatus("stopped")
                 }
             }    
 
@@ -512,19 +512,19 @@ def parse(String description) {
 def clearTrack(){
 	sendEvent(name: "trackDescription", value: "")
 	sendEvent(name: "trackData", value: "")
-    setStatus("Stopped") //formerly Inactive
+    setStatus("stopped") //formerly Inactive
 }
 
 def setStatus(status){
 	sendEvent(name: "status", value: status)
 	//map playing/paused/stopped/inactive to on/off
     switch(status){
-    	case "Playing":
+    	case "playing":
         	sendEvent(name: "switch", value: "on")
         	break;
-        case "Paused":
-        case "Stopped":
-        case "Inactive":
+        case "paused":
+        case "stopped":
+        case "inactive":
         default:
         	sendEvent(name: "switch", value: "off")
         	break;
