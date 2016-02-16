@@ -52,6 +52,7 @@ metadata {
         
         command "getActivePlayers"
         command "getVideoPlayerStatus", [ "number" ]
+        command "getAudioPlayerStatus", [ "number" ]
 	}
 
 	simulator {
@@ -63,9 +64,9 @@ metadata {
         multiAttributeTile(name:"kodiMulti", type:"generic", width:6, height:4) {
           tileAttribute("device.status", key: "PRIMARY_CONTROL") {
           	attributeState("default", label: '--', backgroundColor:"#79b821")
-            attributeState("paused", label:'Paused', icon: "st.sonos.pause-btn", backgroundColor:"#79b821")
-            attributeState("playing", label:'Playing', icon: "st.sonos.play-btn", backgroundColor:"#79b821")
-            attributeState("stopped", label:'Stopped', icon: "st.sonos.stop-btn", backgroundColor:"#79b821")
+            attributeState("Paused", label:'Paused', icon: "st.sonos.pause-btn", backgroundColor:"#ffffff")
+            attributeState("Playing", label:'Playing', icon: "st.sonos.play-btn", backgroundColor:"#79b821")
+            attributeState("Stopped", label:'Stopped', icon: "st.sonos.stop-btn", backgroundColor:"#ffffff")
           }
           /*
           tileAttribute("device.trackDescription", key: "SECONDARY_CONTROL") {
@@ -122,8 +123,8 @@ metadata {
             state "default", action:"previousTrack", icon:"st.sonos.previous-btn" //, label: "◀◀"
         }
         standardTile("input.playpause", "device.status", decoration: "flat", height: 2, width: 2) {
-            state "Paused", action:"play",icon: "st.sonos.play-btn", nextState:"playing"//, label: "Play" 
-            state "Playing", action:"pause",icon: "st.sonos.pause-btn", nextState:"paused"//, label: "Pause" //the second character is pause ❚❚ ▶/⏸
+            state "Paused", action:"play",icon: "st.sonos.play-btn", nextState:"Playing"//, label: "Play" 
+            state "Playing", action:"pause",icon: "st.sonos.pause-btn", nextState:"Paused"//, label: "Pause" //the second character is pause ❚❚ ▶/⏸
             
         }
         standardTile("input.next", "device.status", decoration: "flat", height: 2, width: 2) {
@@ -157,7 +158,9 @@ metadata {
         
         //For the lists...
         standardTile("mainOverview", "device.status", height: 1, width: 1, canChangeIcon: true) {
-            state "default", label: '${currentValue}', action:"playPause", icon: "st.Electronics.electronics18"
+            state "default", label: '${currentValue}', action:"playPause", backgroundColor: "#ffffff", icon: "st.Electronics.electronics18"
+            state "Paused", label: 'Paused', action:"play", nextState:"Playing", backgroundColor: "#ffffff", icon: "st.Electronics.electronics18"
+            state "Playing", label: 'Playing', action:"pause", nextState:"Paused", backgroundColor: "#79b821", icon: "st.Electronics.electronics18"
         }
         
         main(["mainOverview"])
@@ -304,7 +307,10 @@ def parse(String description) {
                 def event = new XmlSlurper().parseText(msg.xml?.property?.LastChange.toString())
                 //And if we got the TransportState, let's update the event status
                 if(!event.InstanceID.TransportState.isEmpty()){
-                	transportState = event.InstanceID.TransportState.@val
+                	def playerID = event.InstanceID.@val
+                    sendEvent(name: "playerID", value: playerID)
+                    
+                    transportState = event.InstanceID.TransportState.@val
                     def transportStates = [PAUSED_PLAYBACK: "Paused", PLAYING: "Playing", STOPPED: "Stopped"]
                     def status = transportStates."$transportState"
                     log.debug "Current state is: ${status}"
@@ -363,9 +369,8 @@ def parse(String description) {
 
                     //for audio
                     if(it.type && it.type == "audio"){
-                        //{"jsonrpc": "2.0", "method": "Player.GetItem", "params": { "properties": ["title", "album", "artist", "duration", "thumbnail", "file", "fanart", "streamdetails"], "playerid": 0 }, "id": "AudioGetItem"}
                         log.trace "Audio Player Active"
-                        todo << { getApplicationProperties() } //replace with call to get audio status
+                        todo << { getAudioPlayerStatus(playerid) } //Player.GetItem
                     }
                     //for video
                     if(it.type && it.type == "video"){
@@ -386,10 +391,12 @@ def parse(String description) {
 
             //respond to getting the details for the current audio/video player
             if(state.lastCommand == "Player.GetItem"){
-                //item { id, title, thumbnail, label, streamdetails, type(movie|tvshow), tvshowid, episode, season, showtitle }
+            	//Audio: item {"title", "album", "artist", "duration", "thumbnail", "file", "fanart", "streamdetails" }
+                //Video: item { id, title, thumbnail, label, streamdetails, type(movie|tvshow), tvshowid, episode, season, showtitle }
                 state.lastCommand = null
-                log.trace "Now Playing: ${response?.result?.item?.label}"
-                sendEvent(name: "trackDescription", value: response?.result?.item?.label)
+                def nowPlaying = response?.result?.item?.label ?: response?.result?.item?.title
+                log.trace "Now Playing: ${nowPlaying}"
+                sendEvent(name: "trackDescription", value: nowPlaying)
                 sendEvent(name: "trackData", value: response?.result?.item)
 
                 //when we are done parsing the Player.GetItem for video, let's get the other application properties
@@ -690,12 +697,20 @@ def restoreTrack(someMap){
 //------------- Player Status ------
 def getActivePlayers(){ sendCommand("Player.GetActivePlayers") }
 def getVideoPlayerStatus(playerID){
-	playerID = playerID ?: 1
+	playerID = playerID ?: 1 //default to getting the video player info
 	log.debug "Getting status for player id: ${playerID}"
 	def params = [ "properties": [ "title", "season", "episode", "duration", "showtitle", "tvshowid", "thumbnail", "streamdetails" ],
                   "playerid": playerID ?: 1
                  ]
     sendCommand("Player.GetItem", params, "VideoGetItem")
+}
+def getAudioPlayerStatus(playerID){
+	playerID = playerID ? playerID : 0 //default to getting the audio player info
+	log.debug "Getting status for player id: ${playerID}"
+	def params = [ "properties": ["title", "album", "artist", "duration", "thumbnail", "file", "fanart", "streamdetails"],
+                  "playerid": playerID
+                 ]
+    sendCommand("Player.GetItem", params, "AudioGetItem")
 }
 
 def getApplicationProperties(){
@@ -728,8 +743,10 @@ def off(){ pause() }
 // -------------------- HTTP Command Helpers -----------------------------
 def sendPlayerCommand(command, parameters=null, id=null){
 	def playerid = device.currentValue("playerID")
+    playerid = (playerid != null ? playerid : 1) //don't use elvis operator here as 0 is a valid playerid
     def params = parameters ?: [:]
-    params.put("playerid", playerid ?: 1)
+    params.put("playerid", playerid)
+    log.debug "params: $params"
     sendCommand(command, params, id)
 }
 def sendCommand(command, parameters=null, id=null){
