@@ -273,6 +273,7 @@ def parse(String description) {
         // notify /notify http/1.1:null] 
         if(msg?.headers?.sid && msg?.headers?.timeout){
         	log.debug "Current Event Subscriptions: ${state.transportSID}"
+            
         	//if the SID map is not created, let's create it
         	if(!state.transportSID) state.transportSID = [:]
             
@@ -740,7 +741,8 @@ def refresh() {
 	log.debug "Executing 'refresh'"
     log.debug "Getting status from ${state.host}:${state.port}"
     
-    CheckEventSubscription()
+    //CheckEventSubscription()
+    ResetEventSubscriptions()
     
     def hubActions = []
     hubActions << getActivePlayers()
@@ -865,6 +867,18 @@ def CheckEventSubscription(){
     //sendHubCommand(todo) //force the send of the HubActions -- they don't seem to send from updated()
     todo.each{ sendHubCommand(it) }
 
+}
+
+def ResetEventSubscriptions(){
+	log.trace "Clearing existing event subscriptions and getting a new subscription."
+	//queue up all our actions
+	def todo = []
+	//unsubscribe everything
+	state.transportSID.each { todo << unsubscribeAction("/AVTransport/${state.udn}/event.xml", it.key)}
+    //then subscribe once
+    todo << subscribeAction("/AVTransport/${state.udn}/event.xml")
+    //send the queued up commands
+    todo.each{ sendHubCommand(it) }
 }
 
 private subscribeAction(path, callbackPath="") {
