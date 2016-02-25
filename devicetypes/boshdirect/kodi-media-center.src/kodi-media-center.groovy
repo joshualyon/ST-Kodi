@@ -53,6 +53,9 @@ metadata {
         command "getActivePlayers"
         command "getVideoPlayerStatus", [ "number" ]
         command "getAudioPlayerStatus", [ "number" ]
+        
+        command "showNotification", ["string", "string" ]
+        command "executeAddon", [ "string" ]
 	}
 
 	simulator {
@@ -733,6 +736,17 @@ def getAudioPlayerStatus(playerID){
 def getApplicationProperties(){
 	//{"jsonrpc": "2.0", "method": "Application.GetProperties", "params": {"properties": ["volume"]}, "id": 1}
     sendCommand("Application.GetProperties", ["properties": [ "volume", "muted", "name", "version" ] ])
+}
+
+
+//------------- Extra Super Fun Methods ---------------
+def showNotification(title, message, image="info"){
+	sendCommand("GUI.ShowNotification", [ "title": title, "message": message, "image": image ])
+    //TODO: Add SmartThings image to notification
+}
+
+def executeAddon(addonid){
+	sendCommand("Addons.ExecuteAddon", [ "wait": false, "addonid": addonid ])
 }
 
 
