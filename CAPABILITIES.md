@@ -40,14 +40,14 @@ The following capabilities are implemented in this device type:
 
 ## Commands
 
-**Volume**
+#### Volume
 
 * `toggleMute()` - toggles between muted and unmuted (especially useful in [Android widgets](http://sharptools.boshdirect.com/features))
 * `mute()`
 * `unmute()`
 * `setLevel(number)` - sets the volume level (`0-100`)
 
-**Navigational (Input) Controls**
+#### Navigational (Input) Controls
 
 * `startActivity(string)` - starts the selected activity (choose from the availabile `activities`)
 * `inputUp()` - send the UP (↑) button press
@@ -69,7 +69,7 @@ The following capabilities are implemented in this device type:
 * `nextTrack()` - send the next track command
 * `previousTrack()` - send the previous track command
 
-**Player Status**
+#### Player Status
 
 * `getActivePlayers()` - get the list of currently active players
 * `getVideoPlayerStatus(number)` - gets the status of a specific player
@@ -78,14 +78,15 @@ The following capabilities are implemented in this device type:
 * `refresh()` - gets the updated media playback status and forces a refresh of event subscriptions
  
 
-**Play File/Playlist**
+#### Play File/Playlist
 
 * `playFile(filename)` - starts playing a file (can be a local or HTTP streamed file!)
 * `playPlaylist(playlistid)` - starts playing the specified playlist (by ID) `(0: Music, 1: Video, 2: Pictures)`
 * `clearPlaylist(playlistid)` - clears the specified playlist (by ID)
 * `addToPlaylist(playlistid, filename)` - adds a file to the specified playlist `(0: Music, 1: Video, 2: Pictures)`
 
-**Music Player Capabilities** (those not covered by above sections)
+#### Music Player Capabilities
+(those not covered by above sections)
 
 * `playTrack(filename)` - maps to `playFile(filename)`
 * `playText()` - NOT IMPLEMENTED
@@ -93,7 +94,7 @@ The following capabilities are implemented in this device type:
 * `resumeTrack()` - NOT IMPLEMENTED
 * `restoreTrack()` - NOT IMPLEMENTED
 
-**Special Kodi Methods**
+#### Special Kodi Methods
 
 * `sendNotification(title, message, [image])` - sends a notification with the desired `title` and `message`  
   **Note**: The optional `image` can either be a value of `info`, `warning`, `error`, or a path to an image that Kodi can access per the standard Kodi ShowNotification implementation.
