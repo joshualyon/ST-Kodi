@@ -92,3 +92,9 @@ The following capabilities are implemented in this device type:
 * `setTrack(filename)` - maps to `addToPlaylist(1, filename)`
 * `resumeTrack()` - NOT IMPLEMENTED
 * `restoreTrack()` - NOT IMPLEMENTED
+
+**Special Kodi Methods**
+
+* `sendNotification(title, message, [image])` - sends a notification with the desired `title` and `message`  
+  **Note**: The optional `image` can either be a value of `info`, `warning`, `error`, or a path to an image that Kodi can access per the standard Kodi ShowNotification implementation.
+* `executeAddon(addonid)` - executes the desired addon based on the addon id (eg. `script.globalsearch`)
