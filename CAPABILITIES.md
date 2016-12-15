@@ -21,7 +21,7 @@ The following capabilities are implemented in this device type:
 
 * `trackDescription` - the currently playing movie/TV show name
 * `trackData` - the current track data in JSON format (especially useful in [Tasker](http://sharptools.boshdirect.com/features))
-* `trackType` - the class of track currently playing (eg. object.item.videoItem.videoBroadcast, object.item.videoItem.moive,etc) 
+* `trackType` - the class of track currently playing (eg. `object.item.videoItem.videoBroadcast`, `object.item.videoItem.movie`, etc) 
 * `level` - the current volume level (eg. 100)
 * `mute` - the current mute status (eg. `muted`, `unmuted`)
 * `status` - current playback status of the active player `Playing`, `Paused`, `Stopped`
