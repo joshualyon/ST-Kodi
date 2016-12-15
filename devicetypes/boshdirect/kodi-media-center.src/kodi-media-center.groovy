@@ -31,6 +31,7 @@ metadata {
         attribute "playerID", "number" //the current active player ID
         attribute "kodiVersion", "string" //kodi app version
         attribute "kodiName", "string" //kodi name
+	attribute "trackType", "string" //kodi video type (movie,tv episode,etc)
         
         //command "setupDevice", ["string", "string", "string", "number"]
         command "splitURL", [ "string" ]
@@ -341,6 +342,7 @@ def parse(String description) {
                     def itemClass = metadata.item.children().find{ it.name() == "class" }.toString()
                     if(!itemClass.isEmpty()){
                         log.debug "itemClass: $itemClass"
+			sendEvent(name: "trackType",value: itemClass)
                         def playerID = 1 //default to video
                         if(itemClass.contains("video")) playerID = 1 //object.item.videoItem.movie
                         else if(itemClass.contains("audio")) playerID = 0 //object.item.audioItem.musicTrack
@@ -532,6 +534,7 @@ def parse(String description) {
 def clearTrack(){
 	sendEvent(name: "trackDescription", value: "")
 	sendEvent(name: "trackData", value: "")
+	sendEvent(name: "trackType", value:"")
     setStatus("stopped") //formerly Inactive
 }
 
