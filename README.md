@@ -19,7 +19,7 @@ The best way to get updates for Kodi for SmartThings is to enable GitHub integra
 2. Select `Settings`
 3. Select Add new repository`
 4. Enter the following details:  
-   Owner: `iamcanadian2222`  
+   Owner: `joshualyon`  
    Name: `ST-Kodi`  
    Branch: `master`  
 
@@ -31,8 +31,8 @@ While using the GitHub integration is the recommended method for installing the 
 
 Follow the instructions from the [ThingsThatAreSmart.wiki](http://thingsthataresmart.wiki/index.php?title=Using_Custom_Code#Using_a_Custom_SmartApp) on how to install a custom device type and SmartApp.
 
-* [Kodi SmartApp Code](https://raw.githubusercontent.com/iamcanadian2222/ST-Kodi/master/smartapps/boshdirect/kodi-formerly-xbmc.src/kodi-formerly-xbmc.groovy)
-* [Kodi Device Type Code](https://raw.githubusercontent.com/iamcanadian2222/ST-Kodi/master/devicetypes/boshdirect/kodi-media-center.src/kodi-media-center.groovy)
+* [Kodi SmartApp Code](https://raw.githubusercontent.com/joshualyon/ST-Kodi/master/smartapps/boshdirect/kodi-formerly-xbmc.src/kodi-formerly-xbmc.groovy)
+* [Kodi Device Type Code](https://raw.githubusercontent.com/joshualyon/ST-Kodi/master/devicetypes/boshdirect/kodi-media-center.src/kodi-media-center.groovy)
 
 ## How to Use
 **Configure Kodi**
